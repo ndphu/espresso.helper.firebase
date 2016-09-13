@@ -11,12 +11,24 @@ import (
 	"net/http"
 )
 
-func NewFirebaseClient(keyFile string) *http.Client {
+type FirebaseClient struct {
+	FirebaseRef *firego.Firebase
+}
+
+func NewFirebaseClient(firebaseApp string, keyFile string) *FirebaseClient {
+	fbClient := new(FirebaseClient)
+	client := NewOAuthHttpClient(keyFile)
+	fbClient.FirebaseRef = firego.New(fmt.Sprintf("https://%s.firebaseio.com", firebaseApp), client)
+	return fbClient
+}
+
+func NewOAuthHttpClient(keyFile string) *http.Client {
 	jsonKey, err := ioutil.ReadFile(keyFile) // or path to whatever name you downloaded the JWT to
 	if err != nil {
 		log.Fatal(err)
 	}
-	conf, err := google.JWTConfigFromJSON(jsonKey, "https://www.googleapis.com/auth/userinfo.email",
+	conf, err := google.JWTConfigFromJSON(jsonKey,
+		"https://www.googleapis.com/auth/userinfo.email",
 		"https://www.googleapis.com/auth/firebase.database")
 	if err != nil {
 		log.Fatal(err)
@@ -27,10 +39,9 @@ func NewFirebaseClient(keyFile string) *http.Client {
 	return client
 }
 
-func GetData(url string, client *http.Client) []byte {
-	fb := firego.New(url, client)
+func (fbClient *FirebaseClient) GetData(path string) []byte {
 	var v map[string]interface{}
-	if err := fb.Value(&v); err != nil {
+	if err := fbClient.FirebaseRef.Child(path).Value(&v); err != nil {
 		log.Fatal(err)
 	}
 	raw, err := json.Marshal(v)
@@ -40,6 +51,6 @@ func GetData(url string, client *http.Client) []byte {
 	return raw
 }
 
-func GetDataAsString(url string, client *http.Client) string {
-	return fmt.Sprintf("%s", GetData(url, client))
+func (fbClient *FirebaseClient) GetDataAsString(path string) string {
+	return fmt.Sprintf("%s", fbClient.GetData(path))
 }
