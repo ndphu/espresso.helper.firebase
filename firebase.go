@@ -1,8 +1,8 @@
 package firebase_helper
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/fatih/structs"
 	"github.com/zabawaba99/firego"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -39,18 +39,28 @@ func NewOAuthHttpClient(keyFile string) *http.Client {
 	return client
 }
 
-func (fbClient *FirebaseClient) GetData(path string) []byte {
-	var v map[string]interface{}
-	if err := fbClient.FirebaseRef.Child(path).Value(&v); err != nil {
-		log.Fatal(err)
-	}
-	raw, err := json.Marshal(v)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return raw
+func (f *FirebaseClient) GetValueAsString(path string) string {
+	var result string
+	f.FirebaseRef.Child(path).Value(&result)
+	return result
 }
 
-func (fbClient *FirebaseClient) GetDataAsString(path string) string {
-	return fmt.Sprintf("%s", fbClient.GetData(path))
+func (f *FirebaseClient) GetValueAsStruct(path string, v interface{}) error {
+	return f.FirebaseRef.Child(path).Value(v)
+}
+
+func (f *FirebaseClient) SetValue(path string, value string) error {
+	return f.FirebaseRef.Child(path).Set(value)
+}
+
+func (f *FirebaseClient) InsertOrUpdateStruct(path string, v interface{}) error {
+	return f.FirebaseRef.Child(path).Update(structs.Map(v))
+}
+
+func (f *FirebaseClient) InsertOrUpdateString(path string, dataAsString string) error {
+	return f.FirebaseRef.Child(path).Set(dataAsString)
+}
+
+func (f *FirebaseClient) Delete(path string) error {
+	return f.FirebaseRef.Child(path).Remove()
 }
